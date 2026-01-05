@@ -1,4 +1,4 @@
-name: Deploy GO Docker App
+name: Deploy Go Docker App
 
 on:
   push:
@@ -10,17 +10,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Setup SSH agent
+      - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@api.hamiit.com << 'EOF'
-            cd ~/dev/go-crud-docker-action
-            bash deploy.sh
+          ssh -o StrictHostKeyChecking=no ubuntu@YOUR_EC2_IP << 'EOF'
+            cd /home/ubuntu/dev/go-crud-docker-action || git clone git@github.com:YOUR_USERNAME/go-crud-docker-action.git /home/ubuntu/dev/go-crud-docker-action
+            cd /home/ubuntu/dev/go-crud-docker-action
+            git reset --hard
+            git pull origin main
+
+            # Stop old container
+            docker stop go-docker-app || true
+            docker rm go-docker-app || true
+
+            # Build & run new container
+            docker build -t go-docker-app:latest .
+            docker run -d -p 8080:8080 --name go-docker-app go-docker-app:latest
           EOF
